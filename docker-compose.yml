@@ -1,0 +1,59 @@
+version: '3'
+services:
+  nginx:
+    container_name: nginx
+    build: ./.docker/nginx
+
+    volumes:
+      - ./.docker/certbot/conf:/etc/letsencrypt
+      - ./.docker/certbot/www:/var/www/certbot
+
+    links:
+      - fpm
+    ports:
+      - "8888:80"
+    networks:
+      - app
+
+  fpm:
+    build:
+      context: .
+      dockerfile: ./.docker/fpm/Dockerfile
+    links:
+      - mysql
+    volumes:
+      - ./:/app/
+    depends_on:
+      - mysql
+    container_name: app
+    networks:
+      - app
+
+  mysql:
+    build: ./.docker/mysql
+    container_name: mysql
+    ports:
+      - "3306"
+    volumes:
+      - ./.docker/mysql/data:/var/lib/mysql
+      - ./.docker/mysql/initdb.d:/docker-entrypoint-initdb.d
+      - ./.docker/mysql/my.cnf:/etc/my.cnf
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: db
+    restart: always
+    networks:
+      - app
+
+  adminer:
+    image: adminer:latest
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+    ports:
+      - 127.0.0.1:8080:8080
+    networks:
+      - app
+
+networks:
+  app:
+    name: app
